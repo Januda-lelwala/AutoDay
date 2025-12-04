@@ -13,6 +13,8 @@ struct SettingsView: View {
     @AppStorage("autoSyncCalendar") private var autoSyncCalendar = true
     @AppStorage("defaultTaskDuration") private var defaultTaskDuration = 3600.0
     @AppStorage("cleanupCompletedTasks") private var cleanupCompletedTasks = true
+    @ObservedObject private var taskManager = TaskManager.shared
+    @ObservedObject private var iCloudSync = iCloudSyncManager.shared
     
     private let durationOptions: [(String, TimeInterval)] = [
         ("15 minutes", 900),
@@ -35,6 +37,41 @@ struct SettingsView: View {
                     Text("General")
                 } footer: {
                     Text("Notifications will remind you about upcoming tasks")
+                }
+                
+                Section {
+                    Toggle("iCloud Sync", isOn: $taskManager.isCloudSyncEnabled)
+                        .onChange(of: taskManager.isCloudSyncEnabled) { oldValue, newValue in
+                            taskManager.toggleCloudSync(enabled: newValue)
+                        }
+                    
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        if iCloudSync.isCloudAvailable {
+                            Label("Available", systemImage: "checkmark.icloud")
+                                .foregroundColor(.green)
+                                .font(.caption)
+                        } else {
+                            Label("Not Available", systemImage: "xmark.icloud")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                        }
+                    }
+                    
+                    if let lastSync = iCloudSync.lastSyncDate {
+                        HStack {
+                            Text("Last Sync")
+                            Spacer()
+                            Text(lastSync, style: .relative)
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                } header: {
+                    Text("iCloud Sync")
+                } footer: {
+                    Text("Sync your tasks across all your Apple devices using iCloud. Make sure you're signed in to iCloud.")
                 }
                 
                 Section {
