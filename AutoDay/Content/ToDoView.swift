@@ -123,6 +123,11 @@ struct ToDoView: View {
             }
             .onAppear {
                 taskManager.setCalendarManager(calendarManager)
+                
+                // Debug: Print pending notifications and test
+                Task {
+                    await NotificationManager.shared.printPendingNotifications()
+                }
             }
             .sheet(isPresented: $showingAddTask) {
                 AddTaskSheet(

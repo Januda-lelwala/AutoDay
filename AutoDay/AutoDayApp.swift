@@ -11,6 +11,7 @@ import UserNotifications
 @main
 struct AutoDayApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
+    @StateObject private var calendarManager = CalendarManager()
     private let notificationDelegate = NotificationDelegate()
     
     init() {
@@ -25,9 +26,16 @@ struct AutoDayApp: App {
         WindowGroup {
             ContentView()
                 .onAppear {
-                    // Request notification permission on first launch
+                    // Request permissions on first launch
                     Task {
+                        // Request notification permission
                         await notificationManager.requestAuthorization()
+                        
+                        // Request calendar permission
+                        let _ = await calendarManager.requestAccess()
+                        
+                        // Reschedule all notifications for loaded tasks
+                        await notificationManager.rescheduleAllNotifications(for: TaskManager.shared.tasks)
                     }
                 }
         }

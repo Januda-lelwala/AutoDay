@@ -15,6 +15,8 @@ struct SettingsView: View {
     @AppStorage("cleanupCompletedTasks") private var cleanupCompletedTasks = true
     @ObservedObject private var taskManager = TaskManager.shared
     @ObservedObject private var iCloudSync = iCloudSyncManager.shared
+    @ObservedObject private var notificationManager = NotificationManager.shared
+    @State private var pendingNotificationsCount = 0
     
     private let durationOptions: [(String, TimeInterval)] = [
         ("15 minutes", 900),
@@ -32,11 +34,55 @@ struct SettingsView: View {
             Form {
                 Section {
                     Toggle("Enable Notifications", isOn: $enableNotifications)
+                    
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        if notificationManager.isAuthorized {
+                            Label("Authorized", systemImage: "bell.badge.check")
+                                .foregroundColor(.green)
+                                .font(.caption)
+                        } else {
+                            Label("Not Authorized", systemImage: "bell.slash")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                        }
+                    }
+                    
+                    HStack {
+                        Text("Pending Reminders")
+                        Spacer()
+                        Text("\(pendingNotificationsCount)")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Button(action: {
+                        Task {
+                            await notificationManager.sendTestNotification()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "bell.badge.fill")
+                                .foregroundColor(.blue)
+                            Text("Send Test Notification")
+                            Spacer()
+                            Text("in 10s")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text("Receive notifications 15 minutes before and at the exact due time. Test notification appears in 10 seconds.")
+                }
+                
+                Section {
                     Toggle("Auto-sync with Calendar", isOn: $autoSyncCalendar)
                 } header: {
-                    Text("General")
+                    Text("Calendar")
                 } footer: {
-                    Text("Notifications will remind you about upcoming tasks")
+                    Text("Automatically sync tasks with your calendar events")
                 }
                 
                 Section {
@@ -132,6 +178,10 @@ struct SettingsView: View {
                     }
                     .fontWeight(.semibold)
                 }
+            }
+            .task {
+                let notifications = await notificationManager.getPendingNotifications()
+                pendingNotificationsCount = notifications.count
             }
         }
     }

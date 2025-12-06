@@ -146,6 +146,11 @@ class TaskManager: ObservableObject {
             // Save locally
             self.saveTasksLocally()
             
+            // Reschedule notifications after sync
+            Task {
+                await NotificationManager.shared.rescheduleAllNotifications(for: self.tasks)
+            }
+            
             print("Tasks synced from iCloud")
         }
     }
@@ -210,6 +215,11 @@ class TaskManager: ObservableObject {
             } catch {
                 print("Failed to load tasks: \(error.localizedDescription)")
             }
+        }
+        
+        // Reschedule all notifications after loading tasks
+        Task {
+            await NotificationManager.shared.rescheduleAllNotifications(for: tasks)
         }
     }
     

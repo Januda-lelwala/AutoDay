@@ -16,11 +16,13 @@ struct HomeView: View {
     @State private var showingSuccess = false
     @StateObject private var calendarManager = CalendarManager()
     @ObservedObject private var taskManager = TaskManager.shared
+    @FocusState private var isTextEditorFocused: Bool
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 30) {
+            ZStack {
+                ScrollView {
+                    VStack(spacing: 30) {
                     // Header Section
                     VStack(spacing: 12) {
                         Image(systemName: "calendar.badge.clock")
@@ -62,6 +64,7 @@ struct HomeView: View {
                                 .frame(minHeight: 180)
                                 .scrollContentBackground(.hidden)
                                 .padding(4)
+                                .focused($isTextEditorFocused)
                         }
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
@@ -125,6 +128,41 @@ struct HomeView: View {
                     Spacer(minLength: 20)
                 }
                 .padding(.vertical)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isTextEditorFocused = false
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            
+            // Keyboard toolbar with dismiss button
+            if isTextEditorFocused {
+                VStack {
+                    Spacer()
+                    
+                    HStack {
+                        Spacer()
+                        
+                        Button(action: {
+                            isTextEditorFocused = false
+                        }) {
+                            Image(systemName: "keyboard.chevron.compact.down")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                                )
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 8)
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.3), value: isTextEditorFocused)
+            }
             }
             .navigationBarTitleDisplayMode(.inline)
             .alert("Success!", isPresented: $showingSuccess) {
