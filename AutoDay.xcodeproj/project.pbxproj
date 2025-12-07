@@ -398,6 +398,8 @@
 				DEVELOPMENT_TEAM = F22RZY8ZT6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "AutoDay needs access to your calendar to sync events with your tasks and help you manage your schedule effectively.";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "AutoDay needs access to reminders to create and manage your tasks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -430,6 +432,8 @@
 				DEVELOPMENT_TEAM = F22RZY8ZT6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "AutoDay needs access to your calendar to sync events with your tasks and help you manage your schedule effectively.";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "AutoDay needs access to reminders to create and manage your tasks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

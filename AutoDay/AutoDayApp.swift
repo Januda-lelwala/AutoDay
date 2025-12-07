@@ -17,6 +17,7 @@ struct AutoDayApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(calendarManager)
                 .onAppear {
                     // Request permissions on first launch
                     Task {

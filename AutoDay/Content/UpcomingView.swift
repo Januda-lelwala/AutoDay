@@ -9,7 +9,7 @@ import SwiftUI
 
 struct UpcomingView: View {
     @ObservedObject private var taskManager = TaskManager.shared
-    @StateObject private var calendarManager = CalendarManager()
+    @EnvironmentObject var calendarManager: CalendarManager
     @State private var selectedDate = Date()
     @State private var currentWeekOffset = 0
     @State private var editingTask: TodoTask?
@@ -455,4 +455,5 @@ struct TimelineTaskRow: View {
 
 #Preview {
     UpcomingView()
+        .environmentObject(CalendarManager())
 }

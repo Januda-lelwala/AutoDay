@@ -64,14 +64,19 @@ class CalendarManager: ObservableObject {
     func syncCalendarToTasks() async -> [TodoTask] {
         if !isAuthorized {
             let granted = await requestAccess()
-            if !granted { return [] }
+            if !granted { 
+                print("Calendar access not granted")
+                return [] 
+            }
         }
         
         // Fetch events from today to 90 days in the future
         let startDate = Calendar.current.startOfDay(for: Date())
         let endDate = Calendar.current.date(byAdding: .day, value: 90, to: startDate) ?? Date()
         
+        print("Syncing calendar events from \(startDate) to \(endDate)")
         let events = await fetchCalendarEvents(from: startDate, to: endDate)
+        print("Found \(events.count) calendar events")
         
         // Convert calendar events to tasks
         let tasks = events.map { event -> TodoTask in

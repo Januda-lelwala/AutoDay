@@ -14,7 +14,7 @@ struct HomeView: View {
     @State private var showingError = false
     @State private var generatedTasksCount = 0
     @State private var showingSuccess = false
-    @StateObject private var calendarManager = CalendarManager()
+    @EnvironmentObject var calendarManager: CalendarManager
     @ObservedObject private var taskManager = TaskManager.shared
     @FocusState private var isTextEditorFocused: Bool
     
@@ -272,4 +272,5 @@ struct TipRow: View {
 
 #Preview {
     HomeView()
+        .environmentObject(CalendarManager())
 }

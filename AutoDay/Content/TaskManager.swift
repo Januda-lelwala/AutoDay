@@ -99,23 +99,31 @@ class TaskManager: ObservableObject {
     }
     
     func syncWithCalendar() async {
-        guard let calendarManager = calendarManager else { return }
+        guard let calendarManager = calendarManager else { 
+            print("CalendarManager not set - cannot sync")
+            return 
+        }
         
         await MainActor.run {
             isSyncing = true
         }
         
+        print("Starting calendar sync...")
         let calendarTasks = await calendarManager.syncCalendarToTasks()
+        print("Received \(calendarTasks.count) tasks from calendar")
         
         await MainActor.run {
+            var addedCount = 0
             // Find tasks from calendar that don't exist in our list
             for calendarTask in calendarTasks {
                 // Check if task already exists (by calendar event ID)
                 if !tasks.contains(where: { $0.calendarEventId == calendarTask.calendarEventId }) {
                     // Only add if it's not already in our list
                     tasks.append(calendarTask)
+                    addedCount += 1
                 }
             }
+            print("Added \(addedCount) new tasks from calendar")
             
             isSyncing = false
         }

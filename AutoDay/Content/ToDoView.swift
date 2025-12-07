@@ -9,7 +9,7 @@ import SwiftUI
 import Combine
 
 struct ToDoView: View {
-    @StateObject private var calendarManager = CalendarManager()
+    @EnvironmentObject var calendarManager: CalendarManager
     @ObservedObject private var taskManager = TaskManager.shared
     @State private var showingAddTask = false
     @State private var newTaskTitle = ""
@@ -665,4 +665,5 @@ struct EditTaskSheet: View {
 
 #Preview {
     ToDoView()
+        .environmentObject(CalendarManager())
 }

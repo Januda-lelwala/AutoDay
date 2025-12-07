@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var showingSettings = false
+    @EnvironmentObject var calendarManager: CalendarManager
     
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -58,4 +59,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(CalendarManager())
 }

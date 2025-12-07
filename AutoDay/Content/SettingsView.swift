@@ -16,6 +16,7 @@ struct SettingsView: View {
     @ObservedObject private var taskManager = TaskManager.shared
     @ObservedObject private var iCloudSync = iCloudSyncManager.shared
     @ObservedObject private var notificationManager = NotificationManager.shared
+    @EnvironmentObject var calendarManager: CalendarManager
     @State private var pendingNotificationsCount = 0
     
     private let durationOptions: [(String, TimeInterval)] = [
@@ -79,10 +80,56 @@ struct SettingsView: View {
                 
                 Section {
                     Toggle("Auto-sync with Calendar", isOn: $autoSyncCalendar)
+                    
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        if calendarManager.isAuthorized {
+                            Label("Authorized", systemImage: "calendar.badge.checkmark")
+                                .foregroundColor(.green)
+                                .font(.caption)
+                        } else {
+                            Label("Not Authorized", systemImage: "calendar.badge.exclamationmark")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                        }
+                    }
+                    
+                    if !calendarManager.isAuthorized {
+                        Button(action: {
+                            Task {
+                                let granted = await calendarManager.requestAccess()
+                                if granted {
+                                    // Set the calendar manager for task syncing
+                                    taskManager.setCalendarManager(calendarManager)
+                                }
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "calendar.badge.plus")
+                                    .foregroundColor(.blue)
+                                Text("Request Calendar Access")
+                                Spacer()
+                            }
+                        }
+                    } else if autoSyncCalendar {
+                        Button(action: {
+                            Task {
+                                await taskManager.syncWithCalendar()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .foregroundColor(.blue)
+                                Text("Sync Calendar Now")
+                                Spacer()
+                            }
+                        }
+                    }
                 } header: {
                     Text("Calendar")
                 } footer: {
-                    Text("Automatically sync tasks with your calendar events")
+                    Text(calendarManager.isAuthorized ? "Automatically sync tasks with your calendar events. You can manually sync anytime." : "Grant calendar access to sync your events with tasks.")
                 }
                 
                 Section {
@@ -182,6 +229,9 @@ struct SettingsView: View {
             .task {
                 let notifications = await notificationManager.getPendingNotifications()
                 pendingNotificationsCount = notifications.count
+                
+                // Set calendar manager for task syncing
+                taskManager.setCalendarManager(calendarManager)
             }
         }
     }
@@ -189,4 +239,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+        .environmentObject(CalendarManager())
 }
