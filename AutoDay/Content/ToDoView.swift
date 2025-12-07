@@ -199,27 +199,31 @@ struct ToDoView: View {
         // Sync with Apple Calendar if scheduled
         if hasScheduledTime {
             Task {
+                // Try calendar; even if denied, still schedule notification
                 if !calendarManager.isAuthorized {
                     let granted = await calendarManager.requestAccess()
-                    if !granted {
-                        await MainActor.run {
-                            showingCalendarPermission = true
+                    if granted {
+                        if let eventId = await calendarManager.addTaskToCalendar(
+                            title: newTaskTitle,
+                            dueDate: taskDueDate,
+                            duration: taskDuration
+                        ) {
+                            await MainActor.run { newTask.calendarEventId = eventId }
                         }
-                        return
+                    } else {
+                        await MainActor.run { showingCalendarPermission = true }
+                    }
+                } else {
+                    if let eventId = await calendarManager.addTaskToCalendar(
+                        title: newTaskTitle,
+                        dueDate: taskDueDate,
+                        duration: taskDuration
+                    ) {
+                        await MainActor.run { newTask.calendarEventId = eventId }
                     }
                 }
-                
-                if let eventId = await calendarManager.addTaskToCalendar(
-                    title: newTaskTitle,
-                    dueDate: taskDueDate,
-                    duration: taskDuration
-                ) {
-                    await MainActor.run {
-                        newTask.calendarEventId = eventId
-                    }
-                }
-                
-                // Schedule notification
+
+                // Always schedule notification even if calendar permission is denied
                 await NotificationManager.shared.scheduleNotification(for: newTask)
             }
         }
@@ -247,27 +251,31 @@ struct ToDoView: View {
         // Sync with Apple Calendar if it has a schedule
         if task.dueDate != nil {
             Task {
+                // Try calendar; still schedule notification even if permission denied
                 if !calendarManager.isAuthorized {
                     let granted = await calendarManager.requestAccess()
-                    if !granted {
-                        await MainActor.run {
-                            showingCalendarPermission = true
+                    if granted {
+                        if let eventId = await calendarManager.addTaskToCalendar(
+                            title: duplicatedTask.title,
+                            dueDate: duplicatedTask.dueDate,
+                            duration: duplicatedTask.duration
+                        ) {
+                            await MainActor.run { duplicatedTask.calendarEventId = eventId }
                         }
-                        return
+                    } else {
+                        await MainActor.run { showingCalendarPermission = true }
+                    }
+                } else {
+                    if let eventId = await calendarManager.addTaskToCalendar(
+                        title: duplicatedTask.title,
+                        dueDate: duplicatedTask.dueDate,
+                        duration: duplicatedTask.duration
+                    ) {
+                        await MainActor.run { duplicatedTask.calendarEventId = eventId }
                     }
                 }
-                
-                if let eventId = await calendarManager.addTaskToCalendar(
-                    title: duplicatedTask.title,
-                    dueDate: duplicatedTask.dueDate,
-                    duration: duplicatedTask.duration
-                ) {
-                    await MainActor.run {
-                        duplicatedTask.calendarEventId = eventId
-                    }
-                }
-                
-                // Schedule notification
+
+                // Always schedule notification even if calendar permission is denied
                 await NotificationManager.shared.scheduleNotification(for: duplicatedTask)
             }
         }

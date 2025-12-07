@@ -135,36 +135,16 @@ struct HomeView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             
-            // Keyboard toolbar with dismiss button
-            if isTextEditorFocused {
-                VStack {
-                    Spacer()
-                    
-                    HStack {
-                        Spacer()
-                        
-                        Button(action: {
-                            isTextEditorFocused = false
-                        }) {
-                            Image(systemName: "keyboard.chevron.compact.down")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .padding(12)
-                                .background(
-                                    Circle()
-                                        .fill(Color.blue)
-                                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-                                )
-                        }
-                        .padding(.trailing, 16)
-                        .padding(.bottom, 8)
-                    }
-                }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.spring(response: 0.3), value: isTextEditorFocused)
-            }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(action: { isTextEditorFocused = false }) {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                    }
+                }
+            }
             .alert("Success!", isPresented: $showingSuccess) {
                 Button("OK") {
                     userInput = ""
@@ -245,6 +225,8 @@ struct HomeView: View {
                                         newTask.calendarEventId = eventId
                                     }
                                 }
+                                // Schedule notification
+                                await NotificationManager.shared.scheduleNotification(for: newTask)
                             }
                         }
                     }

@@ -12,15 +12,7 @@ import UserNotifications
 struct AutoDayApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var calendarManager = CalendarManager()
-    private let notificationDelegate = NotificationDelegate()
     
-    init() {
-        // Setup notification delegate
-        UNUserNotificationCenter.current().delegate = notificationDelegate
-        
-        // Setup notification categories
-        NotificationManager.shared.setupNotificationCategories()
-    }
     
     var body: some Scene {
         WindowGroup {

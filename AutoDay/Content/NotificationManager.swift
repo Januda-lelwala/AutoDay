@@ -10,21 +10,25 @@ import UserNotifications
 import SwiftUI
 import Combine
 
-class NotificationManager: NSObject, ObservableObject {
+class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
     
     @Published var isAuthorized = false
     @AppStorage("enableNotifications") private var enableNotifications = true
+
+    private let allowedStatuses: [UNAuthorizationStatus] = [.authorized, .provisional, .ephemeral]
     
     private override init() {
         super.init()
+        UNUserNotificationCenter.current().delegate = self
+        setupNotificationCategories()
         checkAuthorizationStatus()
     }
     
     func checkAuthorizationStatus() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
-                self.isAuthorized = settings.authorizationStatus == .authorized
+                self.isAuthorized = self.allowedStatuses.contains(settings.authorizationStatus)
             }
         }
     }
@@ -57,7 +61,7 @@ class NotificationManager: NSObject, ObservableObject {
         print("[NOTIF] Authorization status: \(settings.authorizationStatus.rawValue)")
         print("[NOTIF] Alert setting: \(settings.alertSetting.rawValue)")
         
-        if settings.authorizationStatus != .authorized {
+        if !allowedStatuses.contains(settings.authorizationStatus) {
             print("[NOTIF] ❌ Not authorized to send notifications")
             let granted = await requestAuthorization()
             if !granted {
@@ -82,7 +86,7 @@ class NotificationManager: NSObject, ObservableObject {
             reminderContent.badge = 1
             reminderContent.categoryIdentifier = "TASK_REMINDER"
             
-            let reminderComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: reminderDate)
+            let reminderComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: reminderDate)
             let reminderTrigger = UNCalendarNotificationTrigger(dateMatching: reminderComponents, repeats: false)
             
             let reminderRequest = UNNotificationRequest(
@@ -111,7 +115,7 @@ class NotificationManager: NSObject, ObservableObject {
             dueContent.badge = 1
             dueContent.categoryIdentifier = "TASK_REMINDER"
             
-            let dueComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)
+            let dueComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: dueDate)
             print("[NOTIF] Due components: year=\(dueComponents.year ?? 0), month=\(dueComponents.month ?? 0), day=\(dueComponents.day ?? 0), hour=\(dueComponents.hour ?? 0), minute=\(dueComponents.minute ?? 0)")
             
             let dueTrigger = UNCalendarNotificationTrigger(dateMatching: dueComponents, repeats: false)
@@ -246,10 +250,9 @@ class NotificationManager: NSObject, ObservableObject {
     }
 }
 
-// Notification Delegate
-class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
-    
-    // Handle notification when app is in foreground
+// MARK: - UNUserNotificationCenterDelegate
+extension NotificationManager {
+    // Show notifications even when app is in foreground
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
@@ -268,14 +271,12 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         
         switch response.actionIdentifier {
         case "COMPLETE_ACTION":
-            // Find and complete the task
             if let task = TaskManager.shared.tasks.first(where: { $0.id.uuidString == taskId }) {
                 task.isCompleted = true
                 TaskManager.shared.updateTask(task)
             }
             
         case "SNOOZE_ACTION":
-            // Reschedule for 10 minutes later
             if let task = TaskManager.shared.tasks.first(where: { $0.id.uuidString == taskId }) {
                 Task {
                     await NotificationManager.shared.scheduleNotification(for: task)
