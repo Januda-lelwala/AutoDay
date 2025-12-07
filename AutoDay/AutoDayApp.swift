@@ -29,10 +29,10 @@ struct AutoDayApp: App {
                     // Request permissions on first launch
                     Task {
                         // Request notification permission
-                        await notificationManager.requestAuthorization()
+                        _ = await notificationManager.requestAuthorization()
                         
                         // Request calendar permission
-                        let _ = await calendarManager.requestAccess()
+                        _ = await calendarManager.requestAccess()
                         
                         // Reschedule all notifications for loaded tasks
                         await notificationManager.rescheduleAllNotifications(for: TaskManager.shared.tasks)

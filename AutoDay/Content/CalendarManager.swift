@@ -18,17 +18,30 @@ class CalendarManager: ObservableObject {
     }
     
     func checkAuthorizationStatus() {
-        let status = EKEventStore.authorizationStatus(for: .event)
-        isAuthorized = (status == .authorized)
+        if #available(iOS 17.0, *) {
+            let status = EKEventStore.authorizationStatus(for: .event)
+            isAuthorized = (status == .fullAccess || status == .writeOnly)
+        } else {
+            let status = EKEventStore.authorizationStatus(for: .event)
+            isAuthorized = (status == .authorized)
+        }
     }
     
     func requestAccess() async -> Bool {
         do {
-            let granted = try await eventStore.requestAccess(to: .event)
-            await MainActor.run {
-                isAuthorized = granted
+            if #available(iOS 17.0, *) {
+                let granted = try await eventStore.requestFullAccessToEvents()
+                await MainActor.run {
+                    isAuthorized = granted
+                }
+                return granted
+            } else {
+                let granted = try await eventStore.requestAccess(to: .event)
+                await MainActor.run {
+                    isAuthorized = granted
+                }
+                return granted
             }
-            return granted
         } catch {
             print("Error requesting calendar access: \(error.localizedDescription)")
             return false

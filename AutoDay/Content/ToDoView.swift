@@ -21,8 +21,9 @@ struct ToDoView: View {
     @State private var showingEditSheet = false
     
     var body: some View {
-        NavigationStack {
-            ZStack {
+        ZStack {
+            NavigationStack {
+                ZStack {
                 if taskManager.tasks.isEmpty {
                     // Empty State
                     VStack(spacing: 20) {
@@ -112,14 +113,6 @@ struct ToDoView: View {
                     }
                     .disabled(taskManager.isSyncing)
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingAddTask = true
-                    }) {
-                        Image(systemName: "plus")
-                    }
-                }
             }
             .onAppear {
                 taskManager.setCalendarManager(calendarManager)
@@ -159,6 +152,34 @@ struct ToDoView: View {
                 Text("Please enable calendar access in Settings to sync tasks with Apple Calendar.")
             }
         }
+        
+        // Floating Add Button
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                Button(action: {
+                    showingAddTask = true
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .background(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
+                .padding(.trailing, 16)
+                .padding(.bottom, 20)
+            }
+        }
+    }
     }
     
     private func addTask() {
@@ -573,7 +594,6 @@ struct EditTaskSheet: View {
     
     private func saveChanges() {
         let oldEventId = task.calendarEventId
-        let oldDueDate = task.dueDate
         
         // Update task properties
         task.title = editedTitle
@@ -584,7 +604,7 @@ struct EditTaskSheet: View {
         Task {
             // If there was an old event and we're removing the schedule, delete it
             if let eventId = oldEventId, !hasScheduledTime {
-                await calendarManager.deleteCalendarEvent(eventIdentifier: eventId)
+                _ = await calendarManager.deleteCalendarEvent(eventIdentifier: eventId)
                 await MainActor.run {
                     task.calendarEventId = nil
                 }
@@ -601,7 +621,7 @@ struct EditTaskSheet: View {
                 )
                 if !success {
                     // If update failed, try creating new event
-                    await calendarManager.deleteCalendarEvent(eventIdentifier: eventId)
+                    _ = await calendarManager.deleteCalendarEvent(eventIdentifier: eventId)
                     if let newEventId = await calendarManager.addTaskToCalendar(
                         title: editedTitle,
                         dueDate: editedDueDate,
