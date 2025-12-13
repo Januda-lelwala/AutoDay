@@ -19,6 +19,7 @@ struct ToDoView: View {
     @State private var showingCalendarPermission = false
     @State private var editingTask: TodoTask?
     @State private var showingEditSheet = false
+    @State private var taskDescription=""
     
     var body: some View {
         ZStack {
@@ -128,6 +129,7 @@ struct ToDoView: View {
                     taskDueDate: $taskDueDate,
                     taskDuration: $taskDuration,
                     hasScheduledTime: $hasScheduledTime,
+                    taskDescription: $taskDescription,
                     onAdd: addTask
                 )
             }
@@ -187,6 +189,7 @@ struct ToDoView: View {
         
         let newTask = TodoTask(
             title: newTaskTitle,
+            taskDescription: taskDescription,
             isCompleted: false,
             dueDate: hasScheduledTime ? taskDueDate : nil,
             duration: taskDuration,
@@ -230,6 +233,7 @@ struct ToDoView: View {
         
         // Reset state
         newTaskTitle = ""
+        taskDescription = ""
         taskDueDate = Date()
         taskDuration = 3600
         hasScheduledTime = false
@@ -317,7 +321,9 @@ struct ToDoView: View {
 class TodoTask: Identifiable, ObservableObject, Codable {
     let id: UUID
     @Published var title: String
+    @Published var taskDescription: String
     @Published var isCompleted: Bool = false
+    @Published var completedAt: Date?
     @Published var dueDate: Date?
     @Published var duration: TimeInterval = 3600 // Default 1 hour in seconds
     @Published var calendarEventId: String?
@@ -327,9 +333,10 @@ class TodoTask: Identifiable, ObservableObject, Codable {
         return startDate.addingTimeInterval(duration)
     }
     
-    init(title: String, isCompleted: Bool = false, dueDate: Date? = nil, duration: TimeInterval = 3600, calendarEventId: String? = nil) {
+    init(title: String, taskDescription: String = "", isCompleted: Bool = false, dueDate: Date? = nil, duration: TimeInterval = 3600, calendarEventId: String? = nil) {
         self.id = UUID()
         self.title = title
+        self.taskDescription = taskDescription
         self.isCompleted = isCompleted
         self.dueDate = dueDate
         self.duration = duration
@@ -338,14 +345,16 @@ class TodoTask: Identifiable, ObservableObject, Codable {
     
     // MARK: - Codable
     enum CodingKeys: String, CodingKey {
-        case id, title, isCompleted, dueDate, duration, calendarEventId
+        case id, title, taskDescription, isCompleted, completedAt, dueDate, duration, calendarEventId
     }
     
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
+        taskDescription = try container.decodeIfPresent(String.self, forKey: .taskDescription) ?? ""
         isCompleted = try container.decode(Bool.self, forKey: .isCompleted)
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
         dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
         duration = try container.decode(TimeInterval.self, forKey: .duration)
         calendarEventId = try container.decodeIfPresent(String.self, forKey: .calendarEventId)
@@ -355,7 +364,9 @@ class TodoTask: Identifiable, ObservableObject, Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(title, forKey: .title)
+        try container.encode(taskDescription, forKey: .taskDescription)
         try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encodeIfPresent(completedAt, forKey: .completedAt)
         try container.encodeIfPresent(dueDate, forKey: .dueDate)
         try container.encode(duration, forKey: .duration)
         try container.encodeIfPresent(calendarEventId, forKey: .calendarEventId)
@@ -364,11 +375,17 @@ class TodoTask: Identifiable, ObservableObject, Codable {
 
 struct TaskRow: View {
     @ObservedObject var task: TodoTask
+    @State private var showingDetail = false
     
     var body: some View {
         HStack {
             Button(action: {
                 task.isCompleted.toggle()
+                if task.isCompleted {
+                    task.completedAt = Date()
+                } else {
+                    task.completedAt = nil
+                }
                 TaskManager.shared.updateTask(task)
             }) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -377,41 +394,185 @@ struct TaskRow: View {
             }
             .buttonStyle(.plain)
             
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(task.title)
-                        .strikethrough(task.isCompleted)
-                        .foregroundColor(task.isCompleted ? .secondary : .primary)
-                    
-                    if task.calendarEventId != nil {
-                        Image(systemName: "calendar.badge.checkmark")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                    }
-                }
-                
-                if let dueDate = task.dueDate {
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock")
-                            .font(.caption2)
-                        Text(dueDate, style: .time)
-                            .font(.caption)
-                        if let endDate = task.endDate {
-                            Text("-")
+            Button(action: {
+                showingDetail = true
+            }) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(task.title)
+                            .strikethrough(task.isCompleted)
+                            .foregroundColor(task.isCompleted ? .secondary : .primary)
+                        
+                        if task.calendarEventId != nil {
+                            Image(systemName: "calendar.badge.checkmark")
                                 .font(.caption)
-                            Text(endDate, style: .time)
+                                .foregroundColor(.blue)
+                        }
+                        
+                        if !task.taskDescription.isEmpty {
+                            Image(systemName: "text.alignleft")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    
+                    if let dueDate = task.dueDate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.caption2)
+                            Text(dueDate, style: .time)
+                                .font(.caption)
+                            if let endDate = task.endDate {
+                                Text("-")
+                                    .font(.caption)
+                                Text(endDate, style: .time)
+                                    .font(.caption)
+                            }
+                            Text("•")
+                                .font(.caption)
+                            Text(dueDate, style: .date)
                                 .font(.caption)
                         }
-                        Text("•")
-                            .font(.caption)
-                        Text(dueDate, style: .date)
-                            .font(.caption)
+                        .foregroundColor(.secondary)
                     }
-                    .foregroundColor(.secondary)
                 }
             }
+            .buttonStyle(.plain)
             
             Spacer()
+        }
+        .sheet(isPresented: $showingDetail) {
+            TaskDetailPopup(task: task)
+        }
+    }
+}
+
+struct TaskDetailPopup: View {
+    @Environment(\.dismiss) var dismiss
+    @ObservedObject var task: TodoTask
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Title Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Task Name", systemImage: "checkmark.circle.fill")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                        
+                        Text(task.title)
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
+                    
+                    Divider()
+                    
+                    // Description Section
+                    if !task.taskDescription.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Description", systemImage: "text.alignleft")
+                                .font(.headline)
+                                .foregroundColor(.orange)
+                            
+                            Text(task.taskDescription)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Divider()
+                    }
+                    
+                    // Time Section
+                    if let dueDate = task.dueDate {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Schedule", systemImage: "clock.fill")
+                                .font(.headline)
+                                .foregroundColor(.purple)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Date:")
+                                        .foregroundColor(.secondary)
+                                    Text(dueDate, style: .date)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                HStack {
+                                    Text("Time:")
+                                        .foregroundColor(.secondary)
+                                    Text(dueDate, style: .time)
+                                        .fontWeight(.medium)
+                                    if let endDate = task.endDate {
+                                        Text("-")
+                                        Text(endDate, style: .time)
+                                            .fontWeight(.medium)
+                                    }
+                                }
+                                
+                                HStack {
+                                    Text("Duration:")
+                                        .foregroundColor(.secondary)
+                                    Text(formatDuration(task.duration))
+                                        .fontWeight(.medium)
+                                }
+                            }
+                            .font(.body)
+                        }
+                        
+                        Divider()
+                    }
+                    
+                    // Status Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Status", systemImage: "flag.fill")
+                            .font(.headline)
+                            .foregroundColor(.green)
+                        
+                        HStack {
+                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(task.isCompleted ? .green : .gray)
+                            Text(task.isCompleted ? "Completed" : "Pending")
+                                .fontWeight(.medium)
+                        }
+                        
+                        if task.calendarEventId != nil {
+                            HStack {
+                                Image(systemName: "calendar.badge.checkmark")
+                                    .foregroundColor(.blue)
+                                Text("Synced with Calendar")
+                                    .fontWeight(.medium)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationTitle("Task Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        
+        if hours > 0 && minutes > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if hours > 0 {
+            return "\(hours)h"
+        } else {
+            return "\(minutes)m"
         }
     }
 }
@@ -422,6 +583,7 @@ struct AddTaskSheet: View {
     @Binding var taskDueDate: Date
     @Binding var taskDuration: TimeInterval
     @Binding var hasScheduledTime: Bool
+    @Binding var taskDescription:String
     let onAdd: () -> Void
     
     private let durationOptions: [(String, TimeInterval)] = [
@@ -442,6 +604,13 @@ struct AddTaskSheet: View {
                     TextField("Enter task name", text: $newTaskTitle)
                 } header: {
                     Text("Task Title")
+                }
+                Section {
+                    TextEditor( text: $taskDescription)
+                        .frame(height: 100)
+                }
+                header: {
+                    Text("Task Description")
                 }
                 
                 Section {
@@ -510,6 +679,7 @@ struct EditTaskSheet: View {
     let onDismiss: () -> Void
     
     @State private var editedTitle: String
+    @State private var editedDescription: String
     @State private var editedDueDate: Date
     @State private var editedDuration: TimeInterval
     @State private var hasScheduledTime: Bool
@@ -530,6 +700,7 @@ struct EditTaskSheet: View {
         self.calendarManager = calendarManager
         self.onDismiss = onDismiss
         _editedTitle = State(initialValue: task.title)
+        _editedDescription = State(initialValue: task.taskDescription)
         _editedDueDate = State(initialValue: task.dueDate ?? Date())
         _editedDuration = State(initialValue: task.duration)
         _hasScheduledTime = State(initialValue: task.dueDate != nil)
@@ -541,6 +712,11 @@ struct EditTaskSheet: View {
                 Section(header: Text("Task Title")) {
                     TextField("Enter task name", text: $editedTitle)
                         .font(.body)
+                }
+                
+                Section(header: Text("Description")) {
+                    TextEditor(text: $editedDescription)
+                        .frame(height: 100)
                 }
                 
                 Section(header: Text("Timing")) {
@@ -605,6 +781,7 @@ struct EditTaskSheet: View {
         
         // Update task properties
         task.title = editedTitle
+        task.taskDescription = editedDescription
         task.dueDate = hasScheduledTime ? editedDueDate : nil
         task.duration = editedDuration
         

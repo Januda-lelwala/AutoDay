@@ -49,6 +49,9 @@ class TaskManager: ObservableObject {
     
     func updateTask(_ task: TodoTask) {
         // Task is a class now, so changes are already reflected
+        // Manually save since didSet doesn't trigger for object property changes
+        saveTasks()
+        
         // Check if task should be removed immediately
         if task.isCompleted {
             checkAndRemoveCompletedTask(task)
@@ -63,38 +66,24 @@ class TaskManager: ObservableObject {
     }
     
     private func checkAndRemoveCompletedTask(_ task: TodoTask) {
-        if task.dueDate == nil {
-            // No due date - remove immediately with delay for animation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.deleteTask(task)
-            }
-        } else if let dueDate = task.dueDate {
-            let calendar = Calendar.current
-            let now = Date()
-            
-            // If due date has passed, remove immediately with delay
-            if calendar.startOfDay(for: dueDate) < calendar.startOfDay(for: now) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.deleteTask(task)
-                }
-            }
+        // Set completion timestamp
+        task.completedAt = Date()
+        
+        // Schedule removal after 30 minutes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1800) { // 1800 seconds = 30 minutes
+            self.deleteTask(task)
         }
     }
     
     private func cleanupCompletedTasks() {
-        let calendar = Calendar.current
         let now = Date()
         
-        // Remove completed tasks whose due date has passed
+        // Remove completed tasks that were completed more than 30 minutes ago
         tasks.removeAll { task in
-            guard task.isCompleted else { return false }
+            guard task.isCompleted, let completedAt = task.completedAt else { return false }
             
-            if let dueDate = task.dueDate {
-                // Remove if due date has passed (not today)
-                return calendar.startOfDay(for: dueDate) < calendar.startOfDay(for: now)
-            }
-            
-            return false // Keep tasks without due dates that somehow weren't removed immediately
+            // Remove if completed more than 30 minutes ago
+            return now.timeIntervalSince(completedAt) >= 1800 // 1800 seconds = 30 minutes
         }
     }
     

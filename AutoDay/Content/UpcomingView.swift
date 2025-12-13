@@ -118,7 +118,7 @@ struct UpcomingView: View {
             }
             .navigationTitle("Upcoming")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         Task {
                             await taskManager.syncWithCalendar()
@@ -381,13 +381,37 @@ struct DaySection: View {
 struct TimelineTaskRow: View {
     @ObservedObject var task: TodoTask
     var isLast: Bool = false
+    @State private var showingDetail = false
     
     var body: some View {
-        Button(action: {
-            task.isCompleted.toggle()
-            TaskManager.shared.updateTask(task)
-        }) {
-            HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
+            Button(action: {
+                task.isCompleted.toggle()
+                if task.isCompleted {
+                    task.completedAt = Date()
+                } else {
+                    task.completedAt = nil
+                }
+                TaskManager.shared.updateTask(task)
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(task.isCompleted ? Color.green : Color.blue)
+                        .frame(width: 12, height: 12)
+                    
+                    if task.isCompleted {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 2)
+                )
+            }
+            .buttonStyle(.plain)
+            
             // Time
             if let dueDate = task.dueDate {
                 VStack(alignment: .trailing, spacing: 2) {
@@ -401,37 +425,34 @@ struct TimelineTaskRow: View {
                     }
                 }
                 .frame(width: 60)
-            }                // Timeline dot and line
-                VStack(spacing: 0) {
-                    ZStack {
-                        Circle()
-                            .fill(task.isCompleted ? Color.green : Color.blue)
-                            .frame(width: 12, height: 12)
-                        
-                        if task.isCompleted {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white, lineWidth: 2)
-                    )
-                    
-                    if !isLast {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: 2, height: 40)
-                    }
+            }
+            
+            // Timeline dot and line
+            VStack(spacing: 0) {
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 2, height: 40)
                 }
-                
+            }
+            
+            Button(action: {
+                showingDetail = true
+            }) {
                 // Task Info
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(task.title)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
-                        .strikethrough(task.isCompleted)
+                    HStack(spacing: 6) {
+                        Text(task.title)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+                            .strikethrough(task.isCompleted)
+                        
+                        if !task.taskDescription.isEmpty {
+                            Image(systemName: "text.alignleft")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                    }
                     
                     if task.isCompleted {
                         HStack(spacing: 4) {
@@ -445,11 +466,14 @@ struct TimelineTaskRow: View {
                     }
                 }
                 .padding(.vertical, isLast ? 4 : 8)
-                
-                Spacer()
             }
+            .buttonStyle(.plain)
+            
+            Spacer()
         }
-        .buttonStyle(.plain)
+        .sheet(isPresented: $showingDetail) {
+            TaskDetailPopup(task: task)
+        }
     }
 }
 
